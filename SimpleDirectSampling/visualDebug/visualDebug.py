@@ -33,15 +33,11 @@ orientPaternFilename = filePath + "orientPatern.txt"
 plt.subplot(1,2,1)
 
 
-# plot the txt matrix
+# plot the sg matrix
+
 data = np.loadtxt(sgFilename)
-sizeY = data.shape[0]
-sizeX = data.shape[1]
-x = np.linspace(0, sizeX-1, sizeX)
-y = np.linspace(0, sizeY-1, sizeY)
-[X, Y] = np.meshgrid(x, y)
-#plt.scatter(X, Y, abs(data))
-plt.contour(X, Y, data)
+data[data<-9999] = 0 # unsimulated point need to be converted!!
+plt.imshow(data ,cmap = plt.cm.gray)
 
 # plot current sg point
 sgPntData = np.loadtxt(sgPntFilename)
@@ -51,7 +47,9 @@ sgRadius = sgPntData[2];
 plt.scatter(sgX,sgY,c='r')
 
 
+
 # plot the rect
+[sizeX, sizeY] = np.shape(data)
 rectMinX = sgX - sgRadius
 rectMinY = sgY - sgRadius
 rectMaxX = sgX + sgRadius
@@ -78,8 +76,9 @@ tiSizeX = data.shape[1]
 tix = np.linspace(0, tiSizeX-1, tiSizeX)
 tiy = np.linspace(0, tiSizeY-1, tiSizeY)
 [tiX, tiY] = np.meshgrid(tix, tiy)
-plt.contour(tiX,tiY,ti)
+#plt.contour(tiX,tiY,ti)
 #plt.scatter(tiX, tiY, 80/abs(ti))
+plt.imshow(ti)
 
 
 # plot the TI pattern

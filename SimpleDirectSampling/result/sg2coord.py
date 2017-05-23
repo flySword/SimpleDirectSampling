@@ -10,4 +10,4 @@ y = np.linspace(0, size - 1, size)
 
 new = np.concatenate((X.reshape(-1,1), Y.reshape(-1,1), sg.reshape(-1,1)))
 new = new.reshape(3,-1)
-np.savetxt('aa.txt', new.T, fmt='%d')
+np.savetxt('coordSg.txt', new.T, fmt='%d')

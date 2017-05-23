@@ -11,32 +11,24 @@
 
 
 
-bool DS_2d::init(std::string tiFilename, std::string HDfilename, int sgDimensionX, int sgDimensionY) {
-	if (false == myIO::readTIFromTxtFile(tiFilename, ti))
+bool DS_2d::init() {
+	if (false == myIO::readTIFromTxtFile(paras.tiFilename, ti))
 		return false;
-	if (false == myIO::for2d::readHardData(HDfilename, hd))
+	if (false == myIO::readHardData(paras.hdFilename, hd))
 		return false;
 
 
 	tiDims.push_back(ti[0].size());
 	tiDims.push_back(ti.size());
 	
-	sgDims.push_back(sgDimensionX);
-	sgDims.push_back(sgDimensionY);
+	sgDims.push_back(paras.sgDimX);
+	sgDims.push_back(paras.sgDimY);
 	sg.resize(sgDims[1]);
 	for (int i = 0; i < sgDims[1]; i++) {
 		sg[i].resize(sgDims[0], UNSIMULATIED_VALUE);
 	}
 
-	// parameters  TODO set in a function or store in a file
-	searchRadius = 25;
-	maxPtNum = 8; //points number of template
-	tolerateDist = 10;// tolerated distance for each point
-
-
 	distNodeListInit();
-
-
 
 	return true;
 }
@@ -50,23 +42,19 @@ void DS_2d::simulation() {
 	for (auto ii = hd.begin(); ii != hd.end(); ii++) {
 		sg[(*ii)[1]][(*ii)[0]] = (*ii)[2];
 	}
-	//for (auto ii = orientHd.begin(); ii != orientHd.end(); ii++) {
-	//	sg[(*ii)[1]][(*ii)[0]] = 12;
-	//}
-
 
 	// generate random path of simulation grid
 	std::vector<int> simulationPath;
-	//getRandomSimulationPath(simulationPath,sgDims);
-	//getUnilateralSimulationPath(simulationPath, sgDims);
-	getRandomSimulationPath(simulationPath, sgDims,0);
+
+	if (paras.isRandomPath == true)
+		getRandomSimulationPath(simulationPath, sgDims, 0);
+	else
+		getUnilateralSimulationPath(simulationPath, sgDims);
 	
 	// relative vector of simulated points around path point
 	// index by i/j/k
 	std::vector<std::vector<int> > simVects;
-
-
-
+	
 	// for each random node in simulation grid
 	int sgx, sgy;
 	int dist;
@@ -85,24 +73,19 @@ void DS_2d::simulation() {
 		progressCnt++;
 		if (int(progressCnt) % 100 == 0) {
 			std::cout << "simulation progress : " << progressCnt / sgDims[0] / sgDims[1] << std::endl;
-			//std::cout << "skip simulation point: " << simulatedSkipCut << std::endl;
 		}
-
-
-		// get simulated points in search radius	
-		calNeiborVect(sgx, sgy, searchRadius, maxPtNum, sgDims, sg, simVects);
-
-
+		
+		// get simulated points in search radius
+		calNeiborVect(sgx, sgy, paras.searchRadius, paras.maxPtNum, sgDims, sg, simVects);
+		
 		// TODO : unconditional simulation is not supported now
-		// it can be supported by alert this
+		// it can be supported by alert there
 		// and not enough point is find may not be calculate by modifying there
 		if (simVects.size() == 0) {
 			continue;
 		}
-
-
-
-		// calculate the TI range
+		
+		// calculate the TI range according to the simVects
 		int xshiftmin, xshiftmax, yshiftmin, yshiftmax;
 		calTiShift(xshiftmin, xshiftmax, yshiftmin, yshiftmax, simVects, tiDims);
 
@@ -113,8 +96,7 @@ void DS_2d::simulation() {
 			}
 		}
 		std::random_shuffle(tiPath.begin(), tiPath.end());
-
-
+		
 		// random search TI
 		int shortest;
 		int shortestX;
@@ -126,26 +108,27 @@ void DS_2d::simulation() {
 		for (int ii = 0; ii < tiPath.size(); ii++) {
 			tiY = tiPath[ii] / tiDims[0];
 			tiX = tiPath[ii] % tiDims[0];
-
 			
-			calContinuousDist(distSquare,tiX, tiY, ti, simVects);
+			if (paras.isContinuousData)
+				calContinuousDist(distSquare, tiX, tiY, ti, simVects);
+			else
+				calCategoricalDist(distSquare, tiX, tiY, ti, simVects, distNodeList);
 
 			if (distSquare < shortest) {
 				shortestX = tiX;
 				shortestY = tiY;
 				shortest = distSquare;
 			}
-
-			if (shortest < tolerateDist*tolerateDist) {
+			if (shortest < paras.tolerateDist*paras.tolerateDist) {
 				break;
 			}
 		}
 
 
-		if (shortest < 100){//TODO maybe a parameter
+		//if (shortest < 1000){//TODO maybe a parameter, skip the far distance node
 			sg[sgy][sgx] = ti[shortestY][shortestX];
 			dist_list.push_back(shortest);
-		}
+		//}
 
 		// for visual debug
 		bool isVisualDebug = false;
@@ -158,20 +141,17 @@ void DS_2d::simulation() {
 			std::string visualDebugPath = "./visualDebug";
 			_mkdir(visualDebugPath.c_str());
 
-			std::vector<int> sgPnt = std::vector<int>{ sgx, sgy, searchRadius };
-			myPlot::save2txt<int>(visualDebugPath + "/sgPnt.txt", std::vector<std::vector<int> >{sgPnt});
-			myPlot::save2txt<int>(visualDebugPath + "/sg.txt", sg);
-			myPlot::save2txt<int>(visualDebugPath + "/ti.txt", ti);
+			std::vector<int> sgPnt = std::vector<int>{ sgx, sgy, paras.searchRadius};
+			myIO::save2txt(visualDebugPath + "/sgPnt.txt", std::vector<std::vector<int> >{sgPnt});
+			myIO::save2txt(visualDebugPath + "/sg.txt", sg);
+			myIO::save2txt(visualDebugPath + "/ti.txt", ti);
 			simVects.insert(simVects.begin(), std::vector<int>{shortestX, shortestY, 0});
 			// WARN : the first line is the (x y) of TI coordinate
 			// the vectors of other line is the (deltaY deltaX attribute)
-			myPlot::save2txt(visualDebugPath + "/pattern.txt", simVects);
+			myIO::save2txt(visualDebugPath + "/pattern.txt", simVects);
 
-			system(("python " + visualDebugPath + "/visual.py " + visualDebugPath).c_str());
+			system(("python " + visualDebugPath + "/visualDebug.py " + visualDebugPath).c_str());
 		}
-
-
-
 	}
 
 	int countNotSimulated = 0;
@@ -189,18 +169,18 @@ void DS_2d::simulation() {
 	std::string resultPath = "./result";
 	_mkdir(resultPath.c_str());
 
-	myIO::writeToASCIIFile(resultPath + "/result_sg_DS_2d.txt", sg);
+	myIO::writeToASCIIFile(resultPath + "/result_sg.txt", sg);
 	//myIO::writeToVTKFile("result_small_sg1.vtk", sg);
-	myIO::writeToASCIIFile(resultPath + "/distSquares.txt", dist_list);
+	myIO::writeToASCIIFile(resultPath + "/distSquares.txt", std::vector<std::vector<int> >{dist_list});
 	
 	bool isVisualResult = true;
 	if ( isVisualResult) {
 		//_mkdir("./python");
 		//_mkdir("./python/result");
 
-		myPlot::save2txt(resultPath + "/sg.txt", sg);
-		myPlot::save2txt(resultPath + "/ti.txt", ti);
-		myPlot::save2txt(resultPath + "/hd.txt", hd);
+		myIO::save2txt(resultPath + "/sg.txt", sg);
+		myIO::save2txt(resultPath + "/ti.txt", ti);
+		myIO::save2txt(resultPath + "/hd.txt", hd);
 		system(("python " + resultPath + "/visualResult.py " + resultPath).c_str());
 	}
 
@@ -227,30 +207,32 @@ void DS_2d::getUnilateralSimulationPath(std::vector<int> &simulationPath, const 
 	}
 }
 
-void DS_2d::getMySimulationPath(std::vector<int> &simulationPath, const std::vector<int>& sgDims) {
 
-	for (int j = 0; j < sgDims[1]; j+=4) {
-		for (int i = 0; i < sgDims[0]; i++) {
-			simulationPath.push_back(i*sgDims[1] + j);
-		}
-	}
-	for (int j = 2; j < sgDims[1]; j += 4) {
-		for (int i = 0; i < sgDims[0]; i++) {
-			simulationPath.push_back(i*sgDims[1] + j);
-		}
-	}
-	for (int j = 1; j < sgDims[1]; j += 4) {
-		for (int i = 0; i < sgDims[0]; i++) {
-			simulationPath.push_back(i*sgDims[1] + j);
-		}
-	}
-	for (int j = 3; j < sgDims[1]; j += 4) {
-		for (int i = 0; i < sgDims[0]; i++) {
-			simulationPath.push_back(i*sgDims[1] + j);
-		}
-	}
-
-}
+//// for test, not use
+//void DS_2d::getMySimulationPath(std::vector<int> &simulationPath, const std::vector<int>& sgDims) {
+//
+//	for (int j = 0; j < sgDims[1]; j+=4) {
+//		for (int i = 0; i < sgDims[0]; i++) {
+//			simulationPath.push_back(i*sgDims[1] + j);
+//		}
+//	}
+//	for (int j = 2; j < sgDims[1]; j += 4) {
+//		for (int i = 0; i < sgDims[0]; i++) {
+//			simulationPath.push_back(i*sgDims[1] + j);
+//		}
+//	}
+//	for (int j = 1; j < sgDims[1]; j += 4) {
+//		for (int i = 0; i < sgDims[0]; i++) {
+//			simulationPath.push_back(i*sgDims[1] + j);
+//		}
+//	}
+//	for (int j = 3; j < sgDims[1]; j += 4) {
+//		for (int i = 0; i < sgDims[0]; i++) {
+//			simulationPath.push_back(i*sgDims[1] + j);
+//		}
+//	}
+//
+//}
 
 /**
 * calculate the neighbor vector of the center point ([sgx],[sgy]) in the range on [searchRadius]
@@ -397,9 +379,6 @@ void DS_2d::calCategoricalDist(int &distSquare, const int &tiX, const int &tiY, 
 				distSquare += 10000;
 			}
 		}
-
-
-
 	}
 
 	if (distSquare >= 10000)
@@ -421,14 +400,16 @@ void DS_2d::calContinuousDist(int &distSquare, const int &tiX, const int &tiY, c
 		vecY = tiY + (*ii)[0];
 		dist = pow((*ii)[2] - ti[vecY][vecX], 2);
 
-		// if the distance to the current ti point is far
-		if (dist > 20) { // TODO : a parameter for every point
-			distSquare += 10000;
-			return;
-		}
-		else { // for near point, pattern should be the same
-			distSquare += dist;
-		}
+		distSquare += dist;
+
+		//// if the distance to the current ti point is far
+		//if (dist > 20) { // TODO : a parameter for every point
+		//	distSquare += 10000;
+		//	return;
+		//}
+		//else { // for near point, pattern should be the same
+		//	distSquare += dist;
+		//}
 
 
 
