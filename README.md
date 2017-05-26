@@ -3,3 +3,9 @@ a simple realization of Direct Sampling algorithm, which is an efficient multipl
 reference to **Mariethoz, G., P. Renard and J. Straubhaar, The Direct Sampling method to perform multiple-point geostatistical simulations. Water Resources Research, 2010. 46(11).**
 
 and the code reference to the matlab code from internet
+
+
+
+### problem
+
+- Categorical data calculation is improved and not test

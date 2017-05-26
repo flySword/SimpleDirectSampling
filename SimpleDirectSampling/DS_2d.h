@@ -19,6 +19,8 @@ struct DsParameters {
 
 	bool isContinuousData;
 
+	int randSeed;
+
 	std::string tiFilename;
 	std::string hdFilename;
 
@@ -31,6 +33,7 @@ struct DsParameters {
 		tolerateDist = 8;
 		isRandomPath = true;
 		isContinuousData = true;
+		randSeed = 0;
 	}
 };
 

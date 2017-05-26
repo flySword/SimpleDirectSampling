@@ -1,6 +1,5 @@
 #include "DS_2d.h"
 #include "myIO.h"
-#include "myUtility.h"
 #include <iostream>
 #include <algorithm>
 #include <math.h>
@@ -47,7 +46,7 @@ void DS_2d::simulation() {
 	std::vector<int> simulationPath;
 
 	if (paras.isRandomPath == true)
-		getRandomSimulationPath(simulationPath, sgDims, 0);
+		getRandomSimulationPath(simulationPath, sgDims, paras.randSeed);
 	else
 		getUnilateralSimulationPath(simulationPath, sgDims);
 	
